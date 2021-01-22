@@ -31,7 +31,8 @@
 	  SUM(CONVAMOUNTREF) AS CONVAMOUNTREF,
 	  C_CURRENCY_SYMBOL(?, 0, 'Y') AS CONVSYM,	  	  
 	  C_CURRENCY_ISOSYM(?) AS CONVISOSYM,
-	  '' AS ID, '' AS NAME, '' AS TRANSCURRENCYID, '' AS TRANSDATE, '' AS TRANSCLIENTID, '' AS TRANSORGID    
+	  '' AS ID, '' AS NAME, '' AS TRANSCURRENCYID, '' AS TRANSDATE, '' AS TRANSCLIENTID, '' AS TRANSORGID , '' AS ORG,  '' AS  PARTNERGROUP, '' AS PARTNER, '' AS DOCUMENTNO,
+	  ''  AS PRODCATEGORY, '' AS PRODUCT, '' AS SEARCHKEY, '' AS BNAME,  '' AS MNAME
 	  FROM (SELECT NIVEL1, NIVEL2, NIVEL3, NIVEL4, NIVEL5, NIVEL6, NIVEL7, NIVEL8, NIVEL9, 
       SUM(LINENETAMT) AS AMOUNT, SUM(MOVEMENTQTY) AS QTY, SUM(WEIGHT) AS WEIGHT,
       SUM(LINENETREF) AS AMOUNTREF, SUM(MOVEMENTQTYREF) AS QTYREF, SUM(WEIGHTREF) AS WEIGHTREF,
@@ -403,4 +404,53 @@
      <Parameter name="lang"/> 
      <Parameter name="shown" optional="true" type="argument" after="WHERE 1=1 "><![CDATA[AND ID IN]]></Parameter>
   </SqlMethod>
+  <SqlMethod name="selectXLS" type="preparedStatement" return="scrollable">
+    <SqlMethodComment></SqlMethodComment>
+    <Sql><![CDATA[
+	   SELECT (SELECT O.NAME FROM AD_ORG O WHERE O.AD_ORG_ID = M_INOUT.AD_ORG_ID) AS ORG,
+	   C_BP_GROUP.NAME as PARTNERGROUP,
+	   C_BPARTNER.NAME  AS PARTNER,
+	   M_INOUT.DOCUMENTNO AS DOCUMENTNO,
+	   M_PRODUCT_CATEGORY.NAME AS PRODCATEGORY,
+	   M_PRODUCT.NAME AS PRODUCT,
+	   M_PRODUCT.VALUE AS SEARCHKEY,
+	   COALESCE(M_INOUTLINE.MOVEMENTQTY*C_ORDERLINE.PRICEACTUAL,0) AS AMOUNT,
+	   M_INOUTLINE.MOVEMENTQTY AS QTY,
+       COALESCE(M_Brand.NAME, '') AS BNAME,
+       COALESCE(Ssfi_Model_Prod.NAME, '') AS MNAME  	   
+       FROM M_INOUTLINE left join C_ORDERLINE on M_INOUTLINE.C_ORDERLINE_ID = C_ORDERLINE.C_ORDERLINE_ID
+	       left join M_PRODUCT on M_INOUTLINE.M_PRODUCT_ID = M_PRODUCT.M_PRODUCT_ID
+		   left join Ssfi_Model_Prod on Ssfi_Model_Prod.Ssfi_Model_Prod_ID = M_PRODUCT.em_Ssfi_Model_Prod_ID
+		   left join M_Brand on M_Brand.M_Brand_ID = Ssfi_Model_Prod.M_Brand_ID	 
+           left join C_ORDER on C_ORDERLINE.C_ORDER_ID = C_ORDER.C_ORDER_ID,
+           M_INOUT left join AD_USER on M_INOUT.SALESREP_ID = AD_USER.AD_USER_ID,
+           C_BPARTNER left join C_BPARTNER CB on C_BPARTNER.SALESREP_ID = CB.C_BPARTNER_ID,
+       C_BP_GROUP, M_PRODUCT_CATEGORY, M_WAREHOUSE, C_UOM,  AD_ORG 
+      WHERE M_INOUT.C_BPARTNER_ID = C_BPARTNER.C_BPARTNER_ID
+      AND C_BPARTNER.C_BP_GROUP_ID = C_BP_GROUP.C_BP_GROUP_ID
+      AND M_INOUT.M_INOUT_ID = M_INOUTLINE.M_INOUT_ID
+      AND M_INOUTLINE.M_PRODUCT_ID = M_PRODUCT.M_PRODUCT_ID
+      AND M_PRODUCT.M_PRODUCT_CATEGORY_ID = M_PRODUCT_CATEGORY.M_PRODUCT_CATEGORY_ID
+      AND M_INOUT.M_WAREHOUSE_ID = M_WAREHOUSE.M_WAREHOUSE_ID
+      AND M_INOUTLINE.C_UOM_ID = C_UOM.C_UOM_ID
+      AND M_INOUT.AD_ORG_ID = AD_ORG.AD_ORG_ID
+      AND M_INOUT.ISSOTRX = 'Y'
+      AND M_INOUT.PROCESSED = 'Y'
+      AND 0=0 AND M_INOUT.AD_ORG_ID IN ('1')
+      AND M_INOUT.AD_CLIENT_ID IN ('8')
+      AND 1=1
+	  GROUP BY ORG, PARTNERGROUP, PARTNER, M_INOUT.DOCUMENTNO, PRODCATEGORY, PRODUCT, SEARCHKEY, AMOUNT, QTY, BNAME, MNAME
+    ]]></Sql>
+	 <Parameter name="adOrgId" optional="true" type="replace" after="AND 0=0 AND M_INOUT.AD_ORG_ID IN (" text="'1'"/>
+    <Parameter name="adUserClient" type="replace" optional="true" after="AND M_INOUT.AD_CLIENT_ID IN (" text="'8'"/>
+    <Parameter name="dateFrom" optional="true" after="AND 1=1"><![CDATA[AND M_INOUT.MOVEMENTDATE >= TO_DATE(?)]]></Parameter>
+    <Parameter name="dateTo" optional="true" after="AND 1=1"><![CDATA[AND M_INOUT.MOVEMENTDATE < TO_DATE(?)]]></Parameter>
+    <Parameter name="cBpartnerGroupId" optional="true" after="AND 1=1"><![CDATA[AND C_BP_GROUP.C_BP_GROUP_ID = ?]]></Parameter>
+    <Parameter name="cBpartnerId" optional="true" type="argument" after="AND 1=1"><![CDATA[AND C_BPARTNER.C_BPARTNER_ID IN]]></Parameter>
+    <Parameter name="mProductCategoryId" optional="true" after="AND 1=1"><![CDATA[AND M_PRODUCT_CATEGORY.M_PRODUCT_CATEGORY_ID = ?]]></Parameter>
+    <Parameter name="mProductId" optional="true" type="argument" after="AND 1=1"><![CDATA[AND M_PRODUCT.M_PRODUCT_ID IN]]></Parameter>
+    <Parameter name="mWarehouseId" optional="true" after="AND 1=1"><![CDATA[AND M_WAREHOUSE.M_WAREHOUSE_ID = ?]]></Parameter>
+    <Parameter name="salesrepId" optional="true" after="AND 1=1"><![CDATA[AND M_INOUT.SALESREP_ID = ?]]></Parameter>
+    <Parameter name="partnerSalesrepId" optional="true" after="AND 1=1"><![CDATA[AND CB.C_BPARTNER_ID = ?]]></Parameter>
+    </SqlMethod>	
 </SqlClass>

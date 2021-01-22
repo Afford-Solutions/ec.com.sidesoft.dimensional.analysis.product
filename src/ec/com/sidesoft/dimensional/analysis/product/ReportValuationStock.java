@@ -478,7 +478,12 @@ public class ReportValuationStock extends HttpSecureAppServlet {
         totalByCategory.put(row.categoryName, spc);
         spcs.add(spc);
       }
-      spc.addCost(new BigDecimal(row.totalCost));
+      try {
+        spc.addCost(new BigDecimal(row.totalCost));
+      } catch (Exception e) {
+        spc.addCost(BigDecimal.ZERO);
+      }
+
     }
     SummaryProductCategory[] datos = spcs.toArray(new SummaryProductCategory[0]);
     String strReportName = "@basedesign@/ec/com/sidesoft/dimensional/analysis/product/ReportValuationStockPDF.jrxml";
